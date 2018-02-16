@@ -38,11 +38,12 @@ function make_actor(sprite, x, y)
 	actor.position_x = x
 	actor.position_y = y
 	actor.hitbox_x = 5
-	actor.hitbox_y = 10
+	actor.hitbox_y = 13
 	actor.hitbox_width = 5
-	actor.hitbox_height = 5
+	actor.hitbox_height = 2
 	actor.velocity_x = 0
 	actor.velocity_y = 0
+	actor.other_actors = {}
 	
 	actor.set_position = function(x, y)
 	 actor.position_x = x
@@ -123,21 +124,27 @@ function draw_menu()
 end
 -->8
 // game
+gameplay_on = true
+
 score = 1000
 initial_song_frames = -150
 song_frames = initial_song_frames
 
 crowd = {}
+actors = {}
+
 player = make_actor(64, 56, 64)
 player.velocity_x = 0
 player.velocity_y = 0
 player.set_position(56, 64)
 
+add(actors, player)
+
 function init_crowd()
  local index = 0
  for y = 1, 8 do
 	 for x = 1, 13 do
-	  if rnd(100) > 50 and
+	  if rnd(100) > 27 and
 	     (
 	      x < 5 or x > 9 or
  	     y < 3 or y > 5
@@ -149,8 +156,17 @@ function init_crowd()
    	)
    	actor.set_position(x * 8, y * 8 + 36)
    	add(crowd, actor)
+   	add(actors, actor)
    end
  	end
+ end
+ 
+ for actor in all(crowd) do
+  for a in all(crowd) do
+   if actor != a then
+    add(actor.other_actors, a)
+   end
+  end
  end
 end
 
@@ -173,7 +189,7 @@ function update_crowd()
      actor.position_y + actor.velocity_y
     ) 
   end
-   
+
   if group_collision(actor, crowd) then
    actor.velocity_x *= -1
    actor.velocity_y *= -1
@@ -277,7 +293,7 @@ end
 
 function update_game()
  song_frames += 1
- if song_frames == 0 then
+ if song_frames == 0 and gameplay_on then
   state = 2
   
   for actor in all(crowd) do
@@ -317,9 +333,9 @@ function draw_game()
 	map(0, 0, 0, 0, 128, 128)
 	draw_band()
 
-	// crowd
-//	sort(crowd)
-	for actor in all(crowd) do
+ // crowd
+ sort(actors)
+	for actor in all(actors) do
 	 big_spr(
 	  actor.sprite,
 	  actor.position_x,
@@ -327,12 +343,6 @@ function draw_game()
 	 )
 	end
 	
-	big_spr(
-	 player.sprite,
-	 player.position_x,
-	 player.position_y
-	)
-
 	print(flr(song_frames / 30), 0, 8, 11)
 	print("score: " .. score, 0, 0)
 end
@@ -424,42 +434,91 @@ function is_map_collision_y(actor)
 end
 
 function group_collision(actor, group)
- result = false
+ result1 = false
+ result2 = false
+ result3 = false
+ result4 = false
  
  local actor_box_min_x = actor.box_min_x
  local actor_box_max_x = actor.box_max_x
  local actor_box_min_y = actor.box_min_y
  local actor_box_max_y = actor.box_max_y
+
+ for a in all(group) do
+  if (a == actor) then
+   break
+  end
   
- for a in all(group) do 
   local a_box_min_x = a.box_min_x
+  result1 = actor_box_max_x < a_box_min_x
+
   local a_box_max_x = a.box_max_x
+  result2 = actor_box_min_x > a_box_max_x
+  
   local a_box_min_y = a.box_min_y
+  result3 = actor_box_max_y < a_box_min_y
+  
   local a_box_max_y = a.box_max_y
+  result4 = actor_box_min_y > a_box_max_y
  
-  // todo: optimization 
-  result =
-   actor_box_min_x != a_box_min_x and
-   actor_box_max_x != a_box_max_x and
-   actor_box_min_y != a_box_min_y and
-   actor_box_max_y != a_box_max_y and
-   
-   actor_box_min_x < a_box_max_x and
-   actor_box_max_x > a_box_min_x and
-   actor_box_min_y > a_box_max_y and
-   actor_box_max_y < a_box_min_y  
-  if result then
+  if (not result1 and not result2 and result3 and result4) then
    break
   end
  end
- 
- return result
+
+ return (not result1 and not result2 and result3 and result4)
 end
 -->8
-// todo: sort function
-// for drawing crowd in layers
-function sort ()
+// for drawing actors in layers
+function sort (data)
+ local n = #data
 
+ -- form a max heap
+ for i = flr(n / 2) + 1, 1, -1 do
+  -- m is the index of the max child
+  local parent, value, m = i, data[i], i + i
+  local key = value.position_y 
+
+  while m <= n do
+   -- find the max child
+   if ((m < n) and (data[m + 1].position_y > data[m].position_y)) m += 1
+   local mval = data[m]
+   if (key > mval.position_y) break
+   data[parent] = mval
+   parent = m
+   m += m
+  end
+  data[parent] = value
+ end 
+
+ -- read out the values,
+ -- restoring the heap property
+ -- after each step
+ for i = n, 2, -1 do
+  -- swap root with last
+  local value = data[i]
+  data[i], data[1] = data[1], value
+
+  -- restore the heap
+  local parent, terminate, m = 1, i - 1, 2
+  local key = value.position_y 
+
+  while m <= terminate do
+   local mval = data[m]
+   local mkey = mval.position_y
+   if (m < terminate) and (data[m + 1].position_y > mkey) then
+    m += 1
+    mval = data[m]
+    mkey = mval.position_y
+   end
+   if (key > mkey) break
+   data[parent] = mval
+   parent = m
+   m += m
+  end  
+
+  data[parent] = value
+ end
 end
 __gfx__
 0000000082888888dddddddd00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
