@@ -11,6 +11,9 @@ blue_gray = 13
 
 sprite_count = 8
 
+down_chance = 700
+up_chance = 998
+
 song_length = 256 --[[1792]]
 
 state = main_menu 
@@ -44,6 +47,7 @@ function make_actor(sprite, x, y, map_flag)
 
     a.map_flag = map_flag
     a.sprite = sprite
+    a.down = false
 
     a.p_x = x
     a.p_y = y
@@ -51,6 +55,7 @@ function make_actor(sprite, x, y, map_flag)
     a.offset_y = 13
     a.w = 5
     a.h = 2
+    a.z = a.p_y
 
     a.x = a.p_x + a.offset_x
     a.x2 = a.x + a.w
@@ -68,6 +73,12 @@ function make_actor(sprite, x, y, map_flag)
         a.x2 = a.x + a.w
         a.y = a.p_y + a.offset_y + a.v_y
         a.y2 = a.y + a.h
+
+        if a.down then
+            a.z = 0
+        else
+            a.z = y
+        end
     end
 
     a.randomize = function()
@@ -78,6 +89,22 @@ function make_actor(sprite, x, y, map_flag)
     a.stop = function()
         a.v_x = 0
         a.v_y = 0
+    end
+
+    a.set_down = function ()
+        a.down = true
+        a.offset_y = 12
+        a.h = 19
+        a.stop()
+        a.update()
+    end
+
+    a.set_up = function()
+        a.down = false
+        a.offset_y = 13
+        a.h = 2
+        a.p_y -= 4
+        a.update()
     end
 
     return a 
@@ -95,11 +122,22 @@ function keep_time()
     end
 end
 
-function big_spr(sprite, x, y)
-    spr(sprite, x, y)
-    spr(sprite + 1, x + 8, y)
-    spr(sprite + 16, x, y + 8)
-    spr(sprite + 17, x + 8, y + 8)
+function v_flip_spr(sprite, x, y)
+    spr(sprite, x, y, 1, 1, false, true)
+end
+
+function big_spr(sprite, x, y, down)
+    if down then
+        v_flip_spr(sprite, x, y + 24)
+        v_flip_spr(sprite + 1, x + 8, y + 24)
+        v_flip_spr(sprite + 16, x, y + 16)
+        v_flip_spr(sprite + 17, x + 8, y + 16)
+    else
+        spr(sprite, x, y)
+        spr(sprite + 1, x + 8, y)
+        spr(sprite + 16, x, y + 8)
+        spr(sprite + 17, x + 8, y + 8)
+    end
 end
 
 menu = {}
@@ -172,6 +210,12 @@ end
 
 function update_crowd()
     for a in all(crowd) do
+        if a.down then
+            if rnd(1000) > up_chance then
+                a.set_up()
+            end
+        end
+
         if map_collision_x(a, 0) then
             a.v_x *= -1
         end
@@ -182,8 +226,17 @@ function update_crowd()
 
         for o in all(crowd) do
             if collision(a, o) then
-                a.v_x *= -1
-                a.v_y *= -1
+                if (
+                    state == song and
+                    a.p_y > 42 and
+                    rnd(1000) > down_chance 
+                ) then
+                    a.stop()
+                    a.set_down()
+                else
+                    a.v_x *= -1
+                    a.v_y *= -1
+                end
             end
         end
 
@@ -210,6 +263,17 @@ function update_player()
         p.v_y = 1
     end
 
+    if btn(4) then
+        for a in all(actors) do
+            local collision, o  = collision(p, a, true)
+            
+            if collision and o.down then
+                o.set_up()
+                score += 50
+            end
+        end 
+    end
+
     if map_collision_x(p, 1) then
         p.v_x = 0
     end
@@ -222,6 +286,7 @@ function update_player()
         if collision(p, a) then
             if state == song then
                 score -= 1
+                sfx(2)
             end
 
             p.p_x -= p.v_x
@@ -255,6 +320,7 @@ function update_game()
 
         for a in all(crowd) do
             a.stop()
+            a.set_up()
         end
     end
 
@@ -298,13 +364,15 @@ function draw_game()
 
     sort(actors)
     for a in all(actors) do
-        big_spr(a.sprite, a.p_x, a.p_y)
+        big_spr(a.sprite, a.p_x, a.p_y, a.down)
     end
 
     if state == no_song then
         draw_score()
     end
 
+    local score_str = "Score: " .. tostr(score)
+    print(score_str, 64 - #score_str * 2, 0, 7)
     print(flr(song_frames / 30), 0, 8, 11)
 
 end
@@ -323,8 +391,12 @@ function map_collision_y(a, flag)
     return up or down
 end
 
-function collision(a, o)
-    if a == o then
+function collision(a, o, check_down)
+    if (
+        a == o or 
+        (o.down and not check_down) or
+        a.down
+    ) then
         return false
     end
 
@@ -343,7 +415,7 @@ function collision(a, o)
         a_x2 > o_x and
         a_y < o_y2 and
         a_y2 > o_y
-    )
+    ), o
 end
 
 function sort (data)
