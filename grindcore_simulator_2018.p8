@@ -1,133 +1,137 @@
 pico-8 cartridge // http://www.pico-8.com
 version 16
 __lua__
-state = 0 // menu
+main_menu = 0
+no_song = 1
+song = 2
+
+lime_green = 11
+black = 0
+blue_gray = 13
+
+sprite_count = 8
+
+song_length = 256 --[[1792]]
+
+state = main_menu 
+t = 0
 
 function _init()
- palt(11, true)
- palt(0, false)
+    palt(lime_green, true)
+    palt(black, false)
 end
 
 function _update()
-	keep_time()
+    keep_time()
 
-	if state == 0 then
-		update_menu()
-	elseif state == 1 or 
-	       state == 2 then
-		update_game()
-	end
+    if state == main_menu then
+        update_menu()
+    elseif state == no_song or state == song then
+        update_game()
+    end
 end
 
 function _draw()
-	if state == 0 then
-		draw_menu()
-	elseif state == 1 or
-	       state == 2 then
-		draw_game()
-	end
+    if state == main_menu then
+        draw_menu()
+    elseif state == no_song or state == song then
+        draw_game()
+    end
 end
 
--->8
-// utils
-t = 0
-
 function make_actor(sprite, x, y, map_flag)
-	local actor = {}
+    local a = {}
 
- actor.map_flag = map_flag
-	actor.sprite = sprite
-	actor.position_x = x
-	actor.position_y = y
-	actor.hitbox_x = 5
-	actor.hitbox_y = 13
-	actor.hitbox_width = 5
-	actor.hitbox_height = 2
-	actor.velocity_x = 0
-	actor.velocity_y = 0
-	actor.other_actors = {}
-	
-	actor.set_position = function(x, y)
-	 actor.position_x = x
-	 actor.position_y = y
-	 
-	 actor.box_min_x = actor.position_x +
-   actor.hitbox_x +
-   actor.velocity_x
-  
- 	actor.box_min_y = actor.position_y +
-   actor.hitbox_height +
-   actor.hitbox_y +
-   actor.velocity_y
-	
- 	actor.box_max_x = actor.position_x +
-   actor.hitbox_width +
-   actor.hitbox_x +
-   actor.velocity_x
-   
-	 actor.box_max_y = actor.position_y +
-   actor.hitbox_y +
-   actor.velocity_y
-	end
-	
-	return actor
+    a.map_flag = map_flag
+    a.sprite = sprite
+
+    a.p_x = x
+    a.p_y = y
+    a.offset_x = 5
+    a.offset_y = 13
+    a.w = 5
+    a.h = 2
+
+    a.x = a.p_x + a.offset_x
+    a.x2 = a.x + a.w
+    a.y = a.p_y + a.offset_y
+    a.y2 = a.y + a.h
+
+    a.v_x = 0
+    a.v_y = 0
+
+    a.update = function()
+        a.p_x += a.v_x
+        a.p_y += a.v_y
+        
+        a.x = a.p_x + a.offset_x + a.v_x
+        a.x2 = a.x + a.w
+        a.y = a.p_y + a.offset_y + a.v_y
+        a.y2 = a.y + a.h
+    end
+
+    a.randomize = function()
+        a.v_x = flr(rnd(3)) - 1
+        a.v_y = flr(rnd(3)) - 1
+    end
+
+    a.stop = function()
+        a.v_x = 0
+        a.v_y = 0
+    end
+
+    return a 
 end
 
 function get_random_actor_sprite()
- return flr(rnd(8)) * 2 + 32
+    return flr(rnd(sprite_count)) * 2 + 32
 end
 
 function keep_time()
-	t += 1;
-	if t == 64 then
-		t = 0
-	end
+    t += 1;
+
+    if t == 64 then
+        t = 0
+    end
 end
 
 function big_spr(sprite, x, y)
-	spr(sprite, x, y)
-	spr(sprite + 1, x + 8, y)
-	spr(sprite + 16, x, y + 8)
-	spr(sprite + 17, x + 8, y + 8)
+    spr(sprite, x, y)
+    spr(sprite + 1, x + 8, y)
+    spr(sprite + 16, x, y + 8)
+    spr(sprite + 17, x + 8, y + 8)
 end
--->8
-// menu
+
 menu = {}
 menu.title_position = 0
 music(0)
 
 function update_menu()
- if btn(4) then
-  music(-1)
- 	state = 1
- 	init_game()
- end
+    if btn(4) then
+        music(-1)
+        state = 1
+        init_game()
+    end
 end
 
 function draw_menu()
-	cls(1)
+    cls(1)
 
-	if menu.title_position != 63 then
-	 menu.title_position += 1
-	end
+    if menu.title_position != 63 then
+        menu.title_position += 1
+    end
 
-	print(
-	 "grindcore simulator 2018",
-	 16,
-	 menu.title_position,
-	 8
-	)
+    print("grindcore simulator 2018", 16, menu.title_position, 8)
 
-	if menu.title_position == 63 then
-	 if flr(t / 8) % 2 == 0  then
- 	 print("press \x8e (default z) to start", 6, 78)
-	 end
-	 
-	 print("no goals, score or tutorial yet", 2, 90)
- end
+    if menu.title_position == 63 then
+        if flr(t / 8) % 2 == 0  then
+            print("press \x8e (default z) to start", 6, 78)
+        end
+
+        print("no goals, score or tutorial yet", 2, 90)
+    end
 end
--->8
-// game
+
 gameplay_on = true
 
 score = 0
@@ -138,466 +142,296 @@ crowd = {}
 actors = {}
 scene = {}
 
-player = make_actor(64, 56, 64)
-player.velocity_x = 0
-player.velocity_y = 0
-player.set_position(56, 64)
+p = make_actor(64, 56, 64)
 
-add(actors, player)
- 
+add(actors, p)
+
 add(scene, make_actor(128, 45, 20))
 add(scene, make_actor(130, 80, 17))
 add(scene, make_actor(132, 70, 10))
 add(scene, make_actor(5, 100, 10))
 
-for actor in all(scene) do
- actor.set_position(actor.position_x, actor.position_y)
- add(actors, actor)
+for a in all(scene) do
+    add(actors, a)
 end
 
 function init_crowd()
- local index = 0
- for y = 1, 8 do
-	 for x = 1, 13 do
-	  if rnd(100) > 30 and
-	     (
-	      x < 5 or x > 9 or
- 	     y < 3 or y > 5
- 	    ) then
- 	  local actor = make_actor(
-   	 get_random_actor_sprite(),
-   	 x * 8,
-   	 y * 8 + 36
-   	)
-   	actor.set_position(x * 8, y * 8 + 36)
-   	add(crowd, actor)
-   	add(actors, actor)
-   end
- 	end
- end
- 
- for actor in all(crowd) do
-  for a in all(crowd) do
-   if actor != a then
-    add(actor.other_actors, a)
-   end
-  end
- end
+    local index = 0
+
+    for y = 1, 8 do
+        for x = 1, 13 do
+            if rnd(100) < 20 and (x < 5 or x > 9 or y < 3 or y > 5) then
+                local a = make_actor(get_random_actor_sprite(), x * 8, y * 8 + 36)
+
+                add(crowd, a)
+                add(actors, a)
+            end
+        end
+    end
 end
 
 function update_crowd()
- for actor in all(crowd) do
-  if is_map_collision_x(actor, 0) then
-  		actor.velocity_x *= -1
-  	else
-    actor.set_position(
-     actor.position_x + actor.velocity_x,
-     actor.position_y
-    )
-  end
-  
-  if is_map_collision_y(actor, 0) then
-  		actor.velocity_y *= -1
-  	else
-    actor.set_position(
-     actor.position_x,
-     actor.position_y + actor.velocity_y
-    ) 
-  end
+    for a in all(crowd) do
+        if map_collision_x(a, 0) then
+            a.v_x *= -1
+        end
 
-  if group_collision(actor, crowd) then
-   actor.velocity_x *= -1
-   actor.velocity_y *= -1
-  end
- end
+        if map_collision_y(a, 0) then
+            a.v_y *= -1
+        end
+
+        for o in all(crowd) do
+            if collision(a, o) then
+                a.v_x *= -1
+                a.v_y *= -1
+            end
+        end
+
+        a.update()
+    end
 end
 
 function update_player()
- // todo refactoring
- collision = group_collision(player, crowd) or
-  group_collision(player, scene)
+    p.stop()
 
- if state == 2 and collision then
- 	score += 1
- end
+    if btn(0) then
+        p.v_x = -1
+    end
 
- if btn(0) then
- 	player.velocity_x = -1
- 	
- 	// todo: collision_x collision_y
- 	// to slide across the collision?
- 	if collision then
- 	 player.set_position(
-  	 player.position_x - player.velocity_x,
-  	 player.position_y
-  	)
- 	end
- 	
-  if not (
-   is_map_collision_x(player, 1)
-  ) then
-  	player.set_position(
-  	 player.position_x + player.velocity_x,
-  	 player.position_y
-  	)
-  end
- end
- 
- if btn(1) then
- 	player.velocity_x = 1
- 	
- 	if collision then
- 	 player.set_position(
-  	 player.position_x - player.velocity_x,
-  	 player.position_y
-  	)
- 	end
- 	
-  if not (
-   is_map_collision_x(player, 1)
-  ) then
-  	player.set_position(
-  	 player.position_x + player.velocity_x,
-  	 player.position_y
-  	)
-  end
- end
- 
- if btn(2) then
-  player.velocity_y = -1
-  
-  if collision then
- 	 player.set_position(
-  	 player.position_x,
-  	 player.position_y - player.velocity_y
-  	)
- 	end
- 	
-  if not ( 
-   is_map_collision_y(player, 1)
-  ) then
-  	player.set_position(
-  	 player.position_x,
-  	 player.position_y + player.velocity_y
-  	)
-  end
- end
- 
- if btn(3) then
-  player.velocity_y = 1
-  
-  if collision then
- 	 player.set_position(
-   	player.position_x,
-   	player.position_y - player.velocity_y
-   )
- 	end
- 	
-  if not ( 
-   is_map_collision_y(player, 1)
-  ) then
-  	player.set_position(
-   	player.position_x,
-   	player.position_y + player.velocity_y
-   )
-  end
- end
+    if btn(1) then
+        p.v_x = 1
+    end
+
+    if btn(2) then
+        p.v_y = -1
+    end
+
+    if btn(3) then
+        p.v_y = 1
+    end
+
+    if map_collision_x(p, 1) then
+        p.v_x = 0
+    end
+
+    if map_collision_y(p, 1) then
+        p.v_y = 0
+    end
+
+    for a in all(actors) do
+        if collision(p, a) then
+            if state == song then
+                score -= 1
+            end
+
+            p.p_x -= p.v_x
+            p.p_y -= p.v_y
+        end
+    end
+
+    p.update()
 end
 
 function init_game()
-	init_crowd()
+    init_crowd()
 end
 
 function update_game()
- play_music()
+    play_music()
 
- song_frames += 1
- if song_frames == 0 and gameplay_on then
-  state = 2
+    song_frames += 1
 
-  for actor in all(crowd) do
-   actor.velocity_x = flr(rnd(2)) - 1
-   actor.velocity_y = flr(rnd(2)) - 1
-  end
- end
- 
- if song_frames == 256 --[[1792]] then
-  state = 1
-  song_frames = initial_song_frames
-  
-  for actor in all(crowd) do
-   actor.velocity_x = 0
-   actor.velocity_y = 0
-  end
- end
- 
- update_crowd()
- update_band()
- update_player()
+    if song_frames == 0 and gameplay_on then
+        state = song
+
+        for a in all(crowd) do
+            a.randomize()
+        end
+    end
+
+    if song_frames == song_length then
+        state = no_song
+        song_frames = initial_song_frames
+
+        for a in all(crowd) do
+            a.stop()
+        end
+    end
+
+    update_crowd()
+    update_band()
+    update_player()
 end
 
 function update_band()
- if state == 2 then
-  for actor in all(scene) do
-   actor.velocity_x = rnd(2) - 1
-   actor.velocity_y = rnd(2) - 1
-   
-   if not ( 
-    is_map_collision_x(actor, 2) or
-    is_map_collision_y(actor, 2)
-   ) then 
-    actor.set_position(
-     actor.position_x + actor.velocity_x,
-     actor.position_y + actor.velocity_y
-    )
-   end
-  end
- end
+    if state == song then
+        for a in all(scene) do
+            a.v_x = rnd(2) - 1
+            a.v_y = rnd(2) - 1
+            
+            if not map_collision_x(a, 2) and not map_collision_y(a, 2) then
+                a.update()
+            end
+        end
+    end
+end
+
+function draw_score()
+    rectfill(0, 30, 128, 38, 7)
+    rectfill(0, 40, 128, 48, 7)
+
+    local score_str = "open this pit up!"
+    local score_message = "let's go!"
+
+    if score > 0 then
+        score_str = tostr(score)
+        score_message = "your score for this song is"
+    end
+
+    print(score_message, 64-#score_message*2, 32, 0)
+    print(score_str, 64-#score_str*2, 42, 0)
 end
 
 function draw_game()
- cls(13)
-	map(0, 0, 0, 0, 128, 128)
+    cls(blue_gray)
+    map(0, 0, 0, 0, 128, 128)
 
- // crowd
- sort(actors)
-	for actor in all(actors) do
-	 big_spr(
-	  actor.sprite,
-	  actor.position_x,
-	  actor.position_y
-	 )
-	end
-	
-	if state == 1 then
- 	rectfill(0, 30, 128, 38, 7)
+    sort(actors)
+    for a in all(actors) do
+        big_spr(a.sprite, a.p_x, a.p_y)
+    end
 
- 	rectfill(0, 40, 128, 48, 7)
+    if state == no_song then
+        draw_score()
+    end
 
-  local score_str = "open this pit up!"
-  local score_message = "let's go!"
+    print(flr(song_frames / 30), 0, 8, 11)
 
-  if score > 0 then
-   score_str = tostr(score)
-   score_message = "your score for this song is"
-  end
-
-  print(score_message, 64-#score_message*2, 32, 0)
- 	print(score_str, 64-#score_str*2, 42, 0)
-	end
-	
-	print(flr(song_frames / 30), 0, 8, 11)
-	
-end
--->8
-// collisions
-
-// todo: remove in favor
-// of actor fields
-function get_hitbox_left(actor) 
- return actor.position_x +
-  actor.hitbox_x +
-  actor.velocity_x
-end
- 
-function get_hitbox_right(actor)
- return actor.position_x +
-  actor.hitbox_width +
-  actor.hitbox_x +
-  actor.velocity_x
-end
- 
-function get_hitbox_up(actor)
- return actor.position_y +
-  actor.hitbox_y +
-  actor.velocity_y
 end
 
-function get_hitbox_down(actor)
- return actor.position_y +
-  actor.hitbox_height +
-  actor.hitbox_y +
-  actor.velocity_y
+function map_collision_x(a, flag)
+    local left = fget(mget(flr((a.x + a.v_x) / 8), flr(a.y / 8)), flag)
+    local right = fget(mget(flr((a.x2 + a.v_x) / 8), flr(a.y / 8)), flag)
+
+    return left or right
 end
 
-// todo: refactoring using
-// actor fields
-function is_map_collision_x(actor, flag)
- local collision_left = fget(
-  mget(
-   flr(get_hitbox_left(actor) / 8),
-   flr((
-    actor.position_y +
-    actor.hitbox_y
-   ) / 8)
-  ),
-  flag
- )
+function map_collision_y(a, flag)
+    local up  = fget(mget(flr(a.x / 8), flr((a.y + a.v_y) / 8)), flag)
+    local down = fget(mget(flr(a.x / 8), flr((a.y2 + a.v_y) / 8)), flag)
 
- local collision_right = fget(
-  mget(
-   flr(get_hitbox_right(actor) / 8),
-   flr((
-    actor.position_y +
-    actor.hitbox_y
-   ) / 8)
-  ),
-  flag
- )
-
- return collision_left or
- 	collision_right
+    return up or down
 end
 
-function is_map_collision_y(actor, flag)
- local collision_up = fget(
-  mget(
-   flr((
-	   actor.position_x +
-	   actor.hitbox_x
-   ) / 8),
-   flr(get_hitbox_up(actor) / 8)
-  ),
-  flag
- )
+function collision(a, o)
+    if a == o then
+        return false
+    end
 
- local collision_down = fget(
-  mget(
-   flr((
-	   actor.position_x +
-	   actor.hitbox_x
-   ) / 8),
-   flr(get_hitbox_down(actor) / 8)
-  ),
-  flag
- )
+    local a_x = a.x
+    local a_x2 = a.x2
+    local a_y = a.y
+    local a_y2 = a.y2
 
- return collision_up or
- 	collision_down
+    local o_x = o.x
+    local o_x2 = o.x2
+    local o_y = o.y
+    local o_y2 = o.y2
+
+    return (
+        a_x < o_x2 and
+        a_x2 > o_x and
+        a_y < o_y2 and
+        a_y2 > o_y
+    )
 end
 
-function group_collision(actor, group)
- result1 = false
- result2 = false
- result3 = false
- result4 = false
- 
- local actor_box_min_x = actor.box_min_x
- local actor_box_max_x = actor.box_max_x
- local actor_box_min_y = actor.box_min_y
- local actor_box_max_y = actor.box_max_y
-
- for a in all(group) do
-  if (a == actor) then
-   break
-  end
-  
-  local a_box_min_x = a.box_min_x
-  result1 = actor_box_max_x < a_box_min_x
-
-  local a_box_max_x = a.box_max_x
-  result2 = actor_box_min_x > a_box_max_x
-  
-  local a_box_min_y = a.box_min_y
-  result3 = actor_box_max_y < a_box_min_y
-  
-  local a_box_max_y = a.box_max_y
-  result4 = actor_box_min_y > a_box_max_y
- 
-  if (not result1 and not result2 and result3 and result4) then
-   break
-  end
- end
-
- return (not result1 and not result2 and result3 and result4)
-end
--->8
-// for drawing actors in layers
 function sort (data)
- local n = #data
+    local n = #data
 
- -- form a max heap
- for i = flr(n / 2) + 1, 1, -1 do
-  -- m is the index of the max child
-  local parent, value, m = i, data[i], i + i
-  local key = value.position_y 
+    -- form a max heap
+    for i = flr(n / 2) + 1, 1, -1 do
+        -- m is the index of the max child
+        local parent, value, m = i, data[i], i + i
+        local key = value.p_y 
 
-  while m <= n do
-   -- find the max child
-   if ((m < n) and (data[m + 1].position_y > data[m].position_y)) m += 1
-   local mval = data[m]
-   if (key > mval.position_y) break
-   data[parent] = mval
-   parent = m
-   m += m
-  end
-  data[parent] = value
- end 
+        while m <= n do
+            -- find the max child
+            if ((m < n) and (data[m + 1].p_y > data[m].p_y)) m += 1
+            local mval = data[m]
+            if (key > mval.p_y) break
+            data[parent] = mval
+            parent = m
+            m += m
+        end
+        data[parent] = value
+    end 
 
- -- read out the values,
- -- restoring the heap property
- -- after each step
- for i = n, 2, -1 do
-  -- swap root with last
-  local value = data[i]
-  data[i], data[1] = data[1], value
+    -- read out the values,
+    -- restoring the heap property
+    -- after each step
+    for i = n, 2, -1 do
+        -- swap root with last
+        local value = data[i]
+        data[i], data[1] = data[1], value
 
-  -- restore the heap
-  local parent, terminate, m = 1, i - 1, 2
-  local key = value.position_y 
+        -- restore the heap
+        local parent, terminate, m = 1, i - 1, 2
+        local key = value.p_y 
 
-  while m <= terminate do
-   local mval = data[m]
-   local mkey = mval.position_y
-   if (m < terminate) and (data[m + 1].position_y > mkey) then
-    m += 1
-    mval = data[m]
-    mkey = mval.position_y
-   end
-   if (key > mkey) break
-   data[parent] = mval
-   parent = m
-   m += m
-  end  
+        while m <= terminate do
+            local mval = data[m]
+            local mkey = mval.p_y
+            if (m < terminate) and (data[m + 1].p_y > mkey) then
+                m += 1
+                mval = data[m]
+                mkey = mval.p_y
+            end
+            if (key > mkey) break
+            data[parent] = mval
+            parent = m
+            m += m
+        end  
 
-  data[parent] = value
- end
+        data[parent] = value
+    end
 end
--->8
+
 track = 0
 a = 0
+
 function play_music()
- if state == 2 then
-  if a % 4 == 0 then
-   if a==0 then
-    track = flr(rnd(2))*2
-   end
+    if state == song then
+        if a % 4 == 0 then
+            if a==0 then
+                track = flr(rnd(2))*2
+            end
 
-   guitar_tile = (mget(a / 4, 16))
-   snare_tile = (mget(a / 4, 17 + track))
-   kick_tile = (mget(a / 4, 18 + track))
+            guitar_tile = (mget(a / 4, 16))
+            snare_tile = (mget(a / 4, 17 + track))
+            kick_tile = (mget(a / 4, 18 + track))
 
-   if snare_tile == 193 then
-    sfx(1)
-   end
+            if snare_tile == 193 then
+                sfx(1)
+            end
 
-   if kick_tile == 194 then
-    sfx(0)
-   end
+            if kick_tile == 194 then
+                sfx(0)
+            end
 
-   if guitar_tile == 192 then
-    sfx(flr(rnd(15)) + 9)
-   end
-  end
+            if guitar_tile == 192 then
+                sfx(flr(rnd(15)) + 9)
+            end
+        end
 
-  a += 1
+        a += 1
 
-  if a == 64 then
-   a = 0
-  end
- else
-  a = 0
- end
+        if a == 64 then
+            a = 0
+        end
+    else
+        a = 0
+    end
 end
 __gfx__
 0000000082888888dddddddddddddddddddddddd9999999999999999555555555555555500000000000000000000000000000000000000000000000000000000
