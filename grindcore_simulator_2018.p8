@@ -11,13 +11,19 @@ blue_gray = 13
 
 sprite_count = 8
 
-down_chance = 700
+spawn_chance = 70
+down_chance = 998
 up_chance = 998
 
 song_length = 256 --[[1792]]
 
 state = main_menu 
 t = 0
+ 
+group1 = {}
+group2 = {}
+group3 = {}
+group4 = {}
 
 function _init()
     palt(lime_green, true)
@@ -198,7 +204,7 @@ function init_crowd()
 
     for y = 1, 8 do
         for x = 1, 13 do
-            if rnd(100) < 20 and (x < 5 or x > 9 or y < 3 or y > 5) then
+            if rnd(100) < spawn_chance and (x < 5 or x > 9 or y < 3 or y > 5) then
                 local a = make_actor(get_random_actor_sprite(), x * 8, y * 8 + 36)
 
                 add(crowd, a)
@@ -224,7 +230,19 @@ function update_crowd()
             a.v_y *= -1
         end
 
-        for o in all(crowd) do
+        local group = 0
+
+        if a.p_y > 96 then
+            group = group4
+        elseif a.p_y > 64 then
+            group = group3
+        elseif a.p_y > 32 then
+            group = group2
+        elseif a.p_y > 0 then
+            group = group1
+        end
+
+        for o in all(group) do
             if collision(a, o) then
                 if (
                     state == song and
@@ -420,6 +438,22 @@ end
 
 function sort (data)
     local n = #data
+    group1 = {}
+    group2 = {}
+    group3 = {}
+    group4 = {}
+    
+    for a in all(data) do
+        if a.p_y >= 96 then
+            add(group4, a)
+        elseif a.p_y >= 64 then
+            add(group3, a)
+        elseif a.p_y >= 32 then
+            add(group2, a)
+        elseif a.p_y >= 0 then
+            add(group1, a)
+        end
+    end
 
     -- form a max heap
     for i = flr(n / 2) + 1, 1, -1 do
