@@ -10,9 +10,9 @@ black = 0
 blue_gray = 13
 
 sprite_count = 8
-
+music_on = true 
 spawn_chance = 50
-down_chance = 997
+down_chance = 998
 up_chance = 998
 
 song_length = 1792
@@ -48,10 +48,9 @@ function _draw()
     end
 end
 
-function make_actor(sprite, x, y, map_flag, no_dive)
+function make_actor(sprite, x, y, no_dive)
     local a = {}
 
-    a.map_flag = map_flag
     a.sprite = sprite
     a.down = false
     a.up = false
@@ -77,7 +76,7 @@ function make_actor(sprite, x, y, map_flag, no_dive)
         a.d_y2 = 0
     else
         a.d_x = x
-        a.d_y = y - 4
+        a.d_y = y
         a.d_x2 = x + 15
         a.d_y2 = y + 16
     end
@@ -102,7 +101,7 @@ function make_actor(sprite, x, y, map_flag, no_dive)
         else
             a.d_x = a.p_x + a.v_x
             a.d_x2 = a.d_x + 15
-            a.d_y = a.p_y + a.v_y - 4
+            a.d_y = a.p_y + a.v_y
             a.d_y2 = a.d_y + 20
         end
 
@@ -111,7 +110,7 @@ function make_actor(sprite, x, y, map_flag, no_dive)
         elseif a.was_up or a.up then
             a.z = 999
         else
-            a.z = y
+            a.z = a.p_y
         end
     end
 
@@ -188,12 +187,12 @@ end
 
 function draw_menu()
     local m1 = "grindcore simulator 2018"
-    local m2 = "press \x8e to start"
-    local m3 = "press \x8e to pick people up"
+    local m2 = "press z to start"
+    local m3 = "points:"
     local m4 = "go wild during one minute songs"
-    local m5 = "+ stage dive"
-    local m6 = "+ pick up people who fell"
-    local m7 = "- don't bump into people"
+    local m5 = "+1 - stage dive"
+    local m6 = "+50 - pick up fallen people (z)"
+    local m7 = "-1 - bump into people"
 
     cls(1)
 
@@ -219,7 +218,7 @@ end
 gameplay_on = true
 
 score = 0
-initial_song_frames = -90
+initial_song_frames = -150 
 song_frames = initial_song_frames
 
 crowd = {}
@@ -230,10 +229,10 @@ p = make_actor(64, 56, 64)
 
 add(actors, p)
 
-add(scene, make_actor(192, 45, 20, 1, true))
-add(scene, make_actor(194, 80, 17, 1, true))
-add(scene, make_actor(196, 70, 10, 1, true))
-add(scene, make_actor(5, 100, 10, 1, true))
+add(scene, make_actor(192, 45, 20, true))
+add(scene, make_actor(194, 80, 17, true))
+add(scene, make_actor(196, 70, 10, true))
+add(scene, make_actor(5, 100, 10, true))
 
 for a in all(scene) do
     add(actors, a)
@@ -374,7 +373,7 @@ function update_player()
         p.v_y = 0
     end
 
-    if p.p_y < 33 and p.p_x > 16 then
+    if p.p_y < 35 and p.p_x > 15 then
         p.up = true
         p.was_up = true
     end
@@ -426,9 +425,15 @@ function update_band()
             a.v_x = rnd(2) - 1
             a.v_y = rnd(2) - 1
             
-            if not map_collision_x(a, 2) and not map_collision_y(a, 2) then
-                a.update()
+            if map_collision_x(a, 2) then
+                a.v_x *= -1
             end
+
+            if map_collision_y(a, 2) then
+                a.v_y *= -1
+            end
+
+            a.update()
         end
     end
 end
@@ -611,7 +616,7 @@ track = 0
 a = 0
 
 function play_music()
-    if state == song then
+    if music_on and state == song then
         if a % 4 == 0 then
             if a==0 then
                 track = flr(rnd(2))*2
