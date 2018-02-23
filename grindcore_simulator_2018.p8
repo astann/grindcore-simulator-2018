@@ -178,7 +178,19 @@ menu.title_position = 0
 music(0)
 
 function update_menu()
-    if btn(4) then
+    if btn(0) then
+        if spawn_chance > 10 then
+            spawn_chance -= 1
+        end
+    end
+
+    if btn(1) then
+        if spawn_chance < 75 then
+            spawn_chance += 1
+        end
+    end
+
+    if btn(4) and menu.title_position == 20 then
         music(-1)
         state = 1
         init_game()
@@ -188,24 +200,29 @@ end
 function draw_menu()
     local m1 = "grindcore simulator 2018"
     local m2 = "press z to start"
+    local m8 = "tickets sold:"
+    local m9 = "\x8b " .. tostr(spawn_chance) .. " \x91"
     local m3 = "points:"
     local m4 = "go wild during one minute songs"
     local m5 = "+1 - stage dive"
     local m6 = "+50 - pick up fallen people (z)"
-    local m7 = "-1 - bump into people"
+    local m7 = "-5 - bump into people"
 
     cls(1)
 
-    if menu.title_position != 40 then
+    if menu.title_position != 20 then
         menu.title_position += 1
     end
 
     print(m1, 64 - #m1 * 2, menu.title_position, 8)
 
-    if menu.title_position == 40 then
+    if menu.title_position == 20 then
         if flr(t / 8) % 2 == 0  then
-            print(m2, 64 - #m2 * 2, 50)
+            print(m2, 64 - #m2 * 2, 30)
         end
+
+        print(m8, 64 - #m8 * 2, 50)
+        print(m9, 48, 60)
 
         print(m4, 64 - #m4 * 2, 80)
         print(m3, 64 - #m3 * 2, 90)
@@ -218,7 +235,7 @@ end
 gameplay_on = true
 
 score = 0
-initial_song_frames = -150 
+initial_song_frames = -90
 song_frames = initial_song_frames
 
 crowd = {}
@@ -352,7 +369,7 @@ function update_player()
             end
         elseif collision(p, a) then
             if state == song then
-                score -= 1
+                score -= 5 
                 sfx(2)
             end
 
@@ -376,6 +393,10 @@ function update_player()
     if p.p_y < 35 and p.p_x > 15 then
         p.up = true
         p.was_up = true
+    end
+
+    if p.y2 > 119 then
+        p.up = false
     end
 
     p.was_up = p.up
@@ -461,7 +482,6 @@ function draw_game()
     sort(actors)
     for a in all(actors) do
         if (p.up or p.was_up) and a.sprite >= 32 and a.sprite <= 64 then
-            --rectfill(a.d_x, a.d_y, a.d_x2, a.d_y2, 14)
             big_spr(a.sprite + 64, a.p_x, a.p_y, a.down)
         else
             big_spr(a.sprite, a.p_x, a.p_y, a.down)
@@ -473,8 +493,20 @@ function draw_game()
     end
 
     local score_str = "score: " .. tostr(score)
+    local song_time = "00:"
+
+    if song_frames < 300 then
+        song_time = song_time .. "0"
+    end
+
+    if song_frames > 0 then
+        song_time = song_time .. tostr(flr(song_frames / 30))
+    else
+        song_time = song_time .. "0"
+    end
+
     print(score_str, 64 - #score_str * 2, 0, 7)
-    print(flr(song_frames / 30), 0, 8, 11)
+    print(song_time, 64 - #song_time * 2, 8, 7)
 
 end
 
