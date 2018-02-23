@@ -11,11 +11,11 @@ blue_gray = 13
 
 sprite_count = 8
 
-spawn_chance = 70
+spawn_chance = 50
 down_chance = 997
 up_chance = 998
 
-song_length = 256 --[[1792]]
+song_length = 1792
 
 state = main_menu 
 t = 0
@@ -187,20 +187,32 @@ function update_menu()
 end
 
 function draw_menu()
+    local m1 = "grindcore simulator 2018"
+    local m2 = "press \x8e to start"
+    local m3 = "press \x8e to pick people up"
+    local m4 = "go wild during one minute songs"
+    local m5 = "+ stage dive"
+    local m6 = "+ pick up people who fell"
+    local m7 = "- don't bump into people"
+
     cls(1)
 
-    if menu.title_position != 63 then
+    if menu.title_position != 40 then
         menu.title_position += 1
     end
 
-    print("grindcore simulator 2018", 16, menu.title_position, 8)
+    print(m1, 64 - #m1 * 2, menu.title_position, 8)
 
-    if menu.title_position == 63 then
+    if menu.title_position == 40 then
         if flr(t / 8) % 2 == 0  then
-            print("press \x8e (default z) to start", 6, 78)
+            print(m2, 64 - #m2 * 2, 50)
         end
 
-        print("no goals, score or tutorial yet", 2, 90)
+        print(m4, 64 - #m4 * 2, 80)
+        print(m3, 64 - #m3 * 2, 90)
+        print(m5, 64 - #m5 * 2, 100)
+        print(m6, 64 - #m6 * 2, 110)
+        print(m7, 64 - #m7 * 2, 120)
     end
 end
 
@@ -331,7 +343,7 @@ function update_player()
                 p.v_y = 1
                 sfx(3)
 
-                if state = song then
+                if state == song then
                     score += 1
                 end
 
